@@ -1,0 +1,47 @@
+name: Node.js CI
+
+on:
+  push:
+    branches: ['master']
+  pull_request:
+    branches: ['master']
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    env:
+      RUN_E2E: ${{ vars.RUN_E2E }} # from repository settings -> Actions -> Variables
+    strategy:
+      matrix:
+        node-version: [22.x]
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      - run: npm install
+      - run: npm run lint-check
+      - run: npm run test
+      - if: ${{ (env.RUN_E2E == 'true' || github.repository == 'sahat/hackathon-starter') && matrix.os == 'windows-latest' }}
+        env:
+          PATH: 'C:\Windows\System32;C:\Windows'
+        run: npm run test:e2e-nokey
+      - if: ${{ (env.RUN_E2E == 'true' || github.repository == 'sahat/hackathon-starter') && matrix.os != 'windows-latest' }}
+        run: npm run test:e2e-nokey
+      - name: Upload tmp as an artifact (Playwrite artifacts, code coverage report, etc)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmp-artifacts-${{ matrix.os }}-${{ github.job }}-${{ github.run_id }}
+          path: tmp/**

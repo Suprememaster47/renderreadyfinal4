@@ -1,0 +1,4 @@
+cd C:\Users\Fire\Desktop\renderready3
+npm install
+npm start
+nodemon app.js
